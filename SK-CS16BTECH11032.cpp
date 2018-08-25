@@ -48,6 +48,8 @@ int re;
 
 int serv_wait = 0;
 
+int no_tuples_sent = 0;
+
 double run_exp(float lmabda) {
     default_random_engine generate;
     exponential_distribution <double> distribution(1.0/lambda);
@@ -65,7 +67,7 @@ void sender(int id, int *clck, int *LS, int *LU) {
     adjacency list. Then it sends a request using the port no. 4000 + (node_no)
     After the connection is established, it writes(sends) the msg
     */
-   
+
     // this_thread::sleep_for(chrono::milliseconds(3000));
 
     vector<int> portno;
@@ -166,6 +168,7 @@ void sender(int id, int *clck, int *LS, int *LU) {
                 // Compare the LS[rndNum] to all of LU and then send the tuples
                 for(int k=0; k<n; k++) {
                     if(LS[rndNum] < LU[k]) {
+                        no_tuples_sent++;
                         temp_convert += ("(" + to_string(k) + " " + to_string(clck[k]) + ")");
                     }
                 }
@@ -224,6 +227,7 @@ void sender(int id, int *clck, int *LS, int *LU) {
                 // Compare the LS[rndNum] to all of LU and then send the tuples
                 for(int k=0; k<n; k++) {
                     if(LS[rndNum] < LU[k]) {
+                        no_tuples_sent++;
                         temp_convert += ("(" + to_string(k) + " " + to_string(clck[k]) + ")");
                     }
                 }
@@ -411,16 +415,17 @@ void receiver(int id, int *clck, int *LU) {
                     time_t now = time(0);
                     tm *time_var = localtime(&now);
 
-                    // Now update the clck[] according to the indcies[] and vals[]  
-                    // to the clock of the process
-
-                    for(int k=0; k<indcies.size(); k++)
-                        clck[indcies[k]] = vals[k];
-                    
                     clck[id] += 1;
                     // Increment the LU vector
                     LU[id] += 1;
 
+                    // Now update the clck[] according to the indcies[] and vals[]  
+                    // to the clock of the process
+
+                    for(int k=0; k<indcies.size(); k++) {
+                        clck[indcies[k]] = max(clck[indcies[k]], vals[k]);
+                        LU[indcies[k]] = clck[id];
+                    }
                     // printf("---------Check---------\n");
                     // printf("The vector received : \n");
                     // for(int i=0; i<n; i++) {
@@ -592,6 +597,8 @@ int main(int argc, char const *argv[])
     }
 
     logFile.close();
+
+    printf("Total vc's sent = %d, and total tuples sent = %d\n", send_evnts * n * n, no_tuples_sent);
 
     return 0;
 }
